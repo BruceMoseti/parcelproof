@@ -1,0 +1,5 @@
+hardfork,record_gas,anchor_gas,verify_gas_batch_4096,verify_calldata_bytes
+shanghai,43937,73371,37269,516
+cancun,43937,73371,37269,516
+prague,43937,73371,38790,516
+osaka,43937,73371,38790,516

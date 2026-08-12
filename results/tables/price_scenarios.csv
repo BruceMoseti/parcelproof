@@ -1,0 +1,4 @@
+name,gas_price_gwei,eth_price_usd,note
+calm,5.0,3000.0,assumption - not a measurement
+typical,20.0,3000.0,assumption - not a measurement
+congested,50.0,3000.0,assumption - not a measurement

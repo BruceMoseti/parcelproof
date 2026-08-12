@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "parcelproof"
+version = "0.1.0"
+description = "Tamper-evident parcel custody ledger with Merkle batch anchoring, and a deterministic gas benchmark of what on-chain provenance costs"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = [
+    "pycryptodome>=3.20",
+    "web3>=7.0",
+    "matplotlib>=3.8",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.4"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = [
+    "error::RuntimeWarning",
+    # Raised by web3's websockets dependency on import. Not actionable from here.
+    "ignore:websockets.legacy is deprecated:DeprecationWarning",
+]
+markers = [
+    "onchain: requires a local EVM node and compiled contracts",
+]
