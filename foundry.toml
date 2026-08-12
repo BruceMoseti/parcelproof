@@ -1,0 +1,19 @@
+[profile.default]
+src = "contracts/src"
+test = "contracts/test"
+out = "contracts/out"
+libs = ["lib"]
+cache_path = "contracts/cache"
+
+# Gas figures published in the README are tied to this exact toolchain. Pinning the
+# compiler, the EVM version and the optimizer, and stripping the metadata hash from the
+# bytecode, is what makes `make bench` reproduce byte-identical gas numbers.
+solc_version = "0.8.28"
+evm_version = "cancun"
+optimizer = true
+optimizer_runs = 200
+bytecode_hash = "none"
+cbor_metadata = false
+
+[fmt]
+line_length = 100

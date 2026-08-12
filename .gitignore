@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+build/
+dist/
+.venv/
+
+# Foundry build output and cache. Artifacts are rebuilt by `make build`; committing them would
+# also mean committing bytecode that has to stay in sync with the source by hand.
+contracts/out/
+contracts/cache/
+
+# Local demo database, recreated by `make demo`.
+*.sqlite
