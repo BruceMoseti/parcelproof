@@ -153,26 +153,60 @@ def plot_gas_per_event() -> None:
 
 
 def plot_verification_gas() -> None:
+    """Verification cost against proof depth, and where its slope changes.
+
+    Two regimes. While standard calldata pricing applies, a proof level costs 512 gas of calldata
+    plus one keccak. From nine levels the EIP-7623 floor sets the price instead, and a level costs
+    exactly 10 gas per token x 4 tokens per byte x 32 bytes.
+    """
     rows = read("verification_gas.csv")
-    fig, ax = plt.subplots(figsize=(9, 5))
-    ax.plot(
-        [int(row["proof_len"]) for row in rows],
-        [int(row["verify_gas"]) for row in rows],
-        marker="o",
-        color="#2f6fb0",
+    depths = [int(row["proof_len"]) for row in rows]
+    gas = [int(row["verify_gas"]) for row in rows]
+    increments = [gas[i + 1] - gas[i] for i in range(len(gas) - 1)]
+
+    fig, ax = plt.subplots(figsize=(9.5, 5.5))
+    ax.plot(depths, gas, marker="o", color="#2f6fb0", zorder=3)
+
+    # Levels priced by the floor are the ones whose marginal cost is the floor's 1,280 gas. The step
+    # into the first of them is transitional, part standard and part floored, so it belongs to
+    # neither regime and is excluded from the quoted slope.
+    FLOOR_STEP = 1280
+    first_floored = next(i for i, step in enumerate(increments) if step >= FLOOR_STEP)
+    standard = increments[: first_floored - 1]
+    ax.axvspan(depths[first_floored] - 0.4, depths[-1] + 0.4, color="#d98800", alpha=0.10)
+
+    standard_mean = sum(standard) / len(standard)
+    ax.annotate(
+        f"standard calldata pricing\n~{standard_mean:.0f} gas per level\n"
+        "(512 calldata + one keccak)",
+        (depths[2], gas[2]),
+        textcoords="offset points",
+        xytext=(12, -46),
+        fontsize=8,
+        color="#22456b",
     )
+    ax.annotate(
+        "EIP-7623 calldata floor\n1,280 gas per level\n(10 x 4 tokens x 32 bytes)",
+        (depths[-2], gas[-2]),
+        textcoords="offset points",
+        xytext=(-140, 18),
+        fontsize=8,
+        color="#8a5a00",
+    )
+
     for row in rows:
         if int(row["batch_size"]) in (1, 256, 4096):
             ax.annotate(
                 f"B={row['batch_size']}",
                 (int(row["proof_len"]), int(row["verify_gas"])),
                 textcoords="offset points",
-                xytext=(6, -10),
+                xytext=(6, -12),
                 fontsize=8,
             )
+
     ax.set_xlabel("inclusion proof length (hashes)")
     ax.set_ylabel("gas to verify one proof on-chain")
-    ax.set_title("Verification cost is the price of large batches")
+    ax.set_title("Deep inclusion proofs are priced by calldata, not by hashing")
     ax.grid(True, alpha=0.25)
     save(fig, "03_verification_gas_vs_proof_depth.png")
 

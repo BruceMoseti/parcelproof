@@ -78,20 +78,23 @@ and anchor timeout ([`sla_optimal.csv`](results/tables/sla_optimal.csv), grid in
    **2.7% at B=256**, the first batch size within 5% of the floor. Below the knee you are buying
    cost reductions cheaply; above it you are paying full price in latency.
 
-4. **The same policy is ten times more expensive for a small depot than for a large hub.** At 5,000
-   parcels per hour, B=4096 costs \$87.07 per 10,000 parcels and the timeout almost never fires. At
-   50 parcels per hour it costs **\$881.77**, because batches never fill and the timeout flushes
-   **100%** of them, making the realised batch 405 events instead of 4,096. Batch size is not a
-   throughput-independent design choice
+4. **The same policy costs a small depot 50x more than a national hub, and its batch size stops
+   meaning anything.** At 5,000 parcels per hour, B=4096 costs \$87.17 per 10,000 parcels and the
+   timeout fires on 0.1% of batches. At 10 parcels per hour the identical policy costs
+   **\$4,392.50**, because batches never fill and the timeout flushes **100%** of them: the realised
+   batch is 81.4 events, which is exactly the hourly event rate times the one hour timeout. At that
+   volume B=256 and B=4096 produce byte-identical results, because the configured size is no longer
+   the binding constraint. Batch size is not a throughput-independent design choice
    ([`rate_sensitivity.csv`](results/tables/rate_sensitivity.csv)).
 
 5. **Deep inclusion proofs are priced by the EIP-7623 calldata floor, not by hashing.** Verifying a
-   proof on-chain costs 26,889 gas for a batch of one and 38,790 for a batch of 4,096. Each extra
-   proof level costs about 863 gas up to depth 8 — 512 gas of calldata plus one keccak — and then
-   **exactly 1,280 gas** from depth 9, which is 10 gas per token x 4 tokens per non-zero byte x 32
-   bytes: the Prague calldata floor taking over from standard pricing. A 12-hash proof costs 4.1%
-   more on Prague and Osaka than on Shanghai and Cancun, while `record` and `anchor` are unchanged
-   to the gas across all four ([`hardfork_sensitivity.csv`](results/tables/hardfork_sensitivity.csv)).
+   proof on-chain costs 26,889 gas for a batch of one and 38,790 for a batch of 4,096. Each of the
+   first eight proof levels costs 863 gas on average, which is 512 gas of calldata plus one keccak.
+   The ninth costs 1,151, and every level after it costs **exactly 1,280 gas** — that is 10 gas per
+   token x 4 tokens per non-zero byte x 32 bytes, the Prague calldata floor taking over from
+   standard pricing partway through. Consistent with that, a 12-hash proof costs 4.1% more on Prague
+   and Osaka than on Shanghai and Cancun, while `record` and `anchor` are identical to the gas
+   across all four ([`hardfork_sensitivity.csv`](results/tables/hardfork_sensitivity.csv)).
 
 6. **The gas numbers are exactly reproducible, and the one source of variation is understood.**
    Repeated identical calls differ by 0.02–0.05%, entirely because a zero byte of calldata costs 4

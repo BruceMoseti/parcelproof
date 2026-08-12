@@ -43,8 +43,11 @@ TIMEOUTS_S = [60.0, 300.0, 900.0, 3600.0]
 # for: near real time, a few minutes, a quarter hour, an hour.
 SLA_TARGETS_S = [60.0, 300.0, 900.0, 3600.0]
 
-# Parcel entry rates for the sensitivity table: a small depot, the primary scenario, a large hub.
-SENSITIVITY_PARCEL_RATES = [50.0, 500.0, 5000.0]
+# Parcel entry rates for the sensitivity table, spanning a single depot to a national hub. Run over
+# a shorter horizon than the main sweep: the top rates produce millions of events, and a few hundred
+# anchors is already enough for stable percentiles at every rate here.
+SENSITIVITY_PARCEL_RATES = [10.0, 25.0, 50.0, 100.0, 250.0, 500.0, 1000.0, 2500.0, 5000.0]
+SENSITIVITY_HOURS = 72.0
 
 REFERENCE_PARCELS = 10_000
 
@@ -214,7 +217,7 @@ def build_rate_sensitivity(gas: dict[str, float], per_parcel: float) -> list[dic
     """
     rows = []
     for parcel_rate in SENSITIVITY_PARCEL_RATES:
-        arrivals = poisson_arrivals(parcel_rate * per_parcel, HORIZON_HOURS, seed=SEED)
+        arrivals = poisson_arrivals(parcel_rate * per_parcel, SENSITIVITY_HOURS, seed=SEED)
         for batch_size in (16, 256, 4096):
             outcome = simulate(arrivals, AnchorPolicy(batch_size, timeout_s=3600.0))
             gas_per_event = merkle_total_gas(outcome.anchor_count, gas) / outcome.event_count
