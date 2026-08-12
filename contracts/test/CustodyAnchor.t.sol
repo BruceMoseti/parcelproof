@@ -164,6 +164,8 @@ contract CustodyAnchorTest is Test {
         uint256 count = uint256(rawCount) % 64 + 1;
         uint256 index = rawIndex % count;
         bytes32[] memory leaves = _leaves(count);
+        // casting to 'uint32' is safe because `count` is a uint8 reduced modulo 64, so at most 64
+        // forge-lint: disable-next-line(unsafe-typecast)
         uint256 batchId = anchor.anchor(tree.root(leaves), uint32(count));
         assertTrue(anchor.verify(batchId, leaves[index], tree.proof(leaves, index)));
     }

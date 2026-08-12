@@ -9,6 +9,12 @@ only the internal call would quietly hide the effect the benchmark exists to qua
 from __future__ import annotations
 
 import json
+import shutil
+import socket
+import subprocess
+import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -18,6 +24,16 @@ from web3.contract import Contract
 REPO_ROOT = Path(__file__).resolve().parents[2]
 ARTIFACT_DIR = REPO_ROOT / "contracts" / "out" / "CustodyAnchor.sol"
 DEFAULT_RPC_URL = "http://127.0.0.1:8545"
+
+# The EVM hardfork the benchmark runs on, pinned deliberately.
+#
+# Anvil defaults to `latest`, which tracks whatever fork is newest in the installed Foundry build,
+# including unreleased ones. Gas schedules change across hardforks, so accepting that default would
+# mean the published gas tables move on a toolchain upgrade and the reproducibility claim would be
+# false. Prague is the reference because it is a shipped mainnet fork and because its EIP-7623
+# calldata floor is what sets the price of verifying a deep inclusion proof; see
+# results/tables/hardfork_sensitivity.csv for the measured difference.
+HARDFORK = "prague"
 
 
 class ArtifactMissing(RuntimeError):
@@ -101,3 +117,48 @@ class Chain:
             calldata_bytes=len(calldata),
             calldata_zero_bytes=calldata.count(0),
         )
+
+
+def _free_port() -> int:
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        return int(sock.getsockname()[1])
+
+
+@contextmanager
+def local_node(timeout_s: float = 30.0, hardfork: str = HARDFORK) -> Iterator[Chain]:
+    """Run a throwaway Anvil node for the duration of the block.
+
+    Anvil is a full EVM implementation, so gas readings from it are the real thing rather than an
+    approximation. It also means neither the tests nor the benchmark need a funded account, an RPC
+    provider, or network access.
+    """
+    if shutil.which("anvil") is None:
+        raise RuntimeError("anvil not on PATH; install Foundry (https://getfoundry.sh)")
+    if not ARTIFACT_DIR.exists():
+        raise ArtifactMissing(f"{ARTIFACT_DIR} missing; run `forge build` first")
+
+    port = _free_port()
+    process = subprocess.Popen(
+        ["anvil", "--port", str(port), "--hardfork", hardfork, "--silent"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    url = f"http://127.0.0.1:{port}"
+    try:
+        deadline = time.monotonic() + timeout_s
+        chain = None
+        while time.monotonic() < deadline:
+            if process.poll() is not None:
+                raise RuntimeError("anvil exited during startup")
+            try:
+                chain = Chain(url)
+                break
+            except Exception:
+                time.sleep(0.2)
+        if chain is None:
+            raise RuntimeError(f"anvil did not become reachable at {url}")
+        yield chain
+    finally:
+        process.terminate()
+        process.wait(timeout=10)

@@ -1,0 +1,5 @@
+strategy,operation,samples,gas_mean,gas_min,gas_max,gas_spread_pct,gas_uniform_calldata,calldata_bytes,on_chain_readable
+per_event_storage,record,32,43935.875,43925,43937,0.0273,43937,36,yes - one slot per event
+per_event_log,record,32,22921.875,22911,22923,0.0524,22923,36,no - contracts cannot read logs
+merkle_anchor,anchor - first call initialises counter,1,90471.0,90471,90471,0.0,90843,68,yes - via an inclusion proof
+merkle_anchor,anchor,31,73369.839,73359,73371,0.0164,73743,68,yes - via an inclusion proof

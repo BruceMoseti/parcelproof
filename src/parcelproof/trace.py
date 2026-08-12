@@ -125,3 +125,40 @@ def generate(parcels: int, parcels_per_hour: float, seed: int = 20260812) -> lis
 def arrival_times(events: list[CustodyEvent]) -> list[float]:
     """The ingest arrival stream the anchoring policy sees, in seconds."""
     return [float(event.occurred_at) for event in events]
+
+
+def events_per_parcel(parcels: int = 10_000, seed: int = 20260812) -> float:
+    """Mean custody events generated per parcel, measured from the lifecycle model."""
+    return len(generate(parcels=parcels, parcels_per_hour=500.0, seed=seed)) / parcels
+
+
+def poisson_arrivals(events_per_hour: float, hours: float, seed: int = 20260812) -> list[float]:
+    """A stationary Poisson arrival stream, in seconds.
+
+    The cost and latency sweep runs on this rather than directly on `generate`, and the reason is
+    worth stating. A finite parcel trace is not stationary: shipments enter over some window and
+    then drain for as long as delivery takes, so its arrival rate ramps up and tails off. Measuring
+    latency percentiles over the whole thing judges large batch sizes mostly on the near empty tail,
+    where batches never fill and the timeout does all the work. That is an artefact of the trace
+    ending, not a property of the anchoring policy.
+
+    A parcel network in steady state has shipments at every stage at once, and the superposition of
+    many independent parcel timelines is well approximated by a Poisson process. So the sweep uses a
+    stationary stream whose rate is derived from the lifecycle model: `events_per_parcel` times the
+    parcel entry rate.
+    """
+    if events_per_hour <= 0:
+        raise ValueError("events_per_hour must be positive")
+    if hours <= 0:
+        raise ValueError("hours must be positive")
+
+    rng = random.Random(seed)
+    mean_gap = 3600.0 / events_per_hour
+    horizon = hours * 3600.0
+    arrivals = []
+    now = 0.0
+    while True:
+        now += rng.expovariate(1.0 / mean_gap)
+        if now > horizon:
+            return arrivals
+        arrivals.append(now)

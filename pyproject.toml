@@ -23,7 +23,11 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-filterwarnings = ["error::RuntimeWarning"]
+filterwarnings = [
+    "error::RuntimeWarning",
+    # Raised by web3's websockets dependency on import. Not actionable from here.
+    "ignore:websockets.legacy is deprecated:DeprecationWarning",
+]
 markers = [
     "onchain: requires a local EVM node and compiled contracts",
 ]
